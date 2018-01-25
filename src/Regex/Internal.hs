@@ -123,4 +123,4 @@ reDot = try g
     where g '.' = Just $ return  <$> satisfy (\_ -> True) -- accept every char
           g _   = Nothing
 
-specChars = "[]()+^$*.|\\"
+specChars = "?[]()+^$*.|\\"
