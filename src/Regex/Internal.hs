@@ -65,26 +65,29 @@ reBracket = pure id
     where g p ps = foldr (<|>) p ps
           cont = reRange <|> reAtom
 
+-- Accepts predefined ranges, such as numbers and lowercase / uppercase alphabet.
 reRange :: Parser Char Regex
 reRange =
         (pure lowCase
-        <* lit 'a'
-        <* lit '-'
-        <* lit 'z')
+         <* lit 'a'
+         <* lit '-'
+         <* lit 'z')
     <|>
         (pure upCase
-        <* lit 'A'
-        <* lit '-'
-        <* lit 'Z')
+         <* lit 'A'
+         <* lit '-'
+         <* lit 'Z')
     <|>
         (pure numRange
-        <* lit '0'
-        <* lit '-'
-        <* lit '9')
+         <* lit '0'
+         <* lit '-'
+         <* lit '9')
     where lowCase  = reOptStr "abcdefghijklmnopqrstuvwxyz"
           upCase   = reOptStr "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
           numRange = reOptStr "0123456789"
 
+-- Helper function to convert a given string into a alternative parser of the
+-- individual chars.
 reOptStr :: String -> Regex
 reOptStr = foldr (<|>) empty . map (\c -> return <$> lit c)
 
@@ -94,7 +97,6 @@ reParen = pure id
     <* lit '('
     <*> reAlt
     <* lit ')'
-
 
 -- Accepts atomic regex which are literals, escape sequences, dots and atomics
 -- in parenthesis.
