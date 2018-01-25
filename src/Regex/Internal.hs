@@ -56,6 +56,38 @@ reQuant =
     <|>
     reAtom
 
+-- Accepts alternatives of atomic regex.
+reBracket :: Parser Char Regex
+reBracket = pure id
+    <* lit '['
+    <*> (g <$> cont <*> pmany cont)
+    <* lit ']'
+    where g p ps = foldr (<|>) p ps
+          cont = reRange <|> reAtom
+
+reRange :: Parser Char Regex
+reRange =
+        (pure lowCase
+        <* lit 'a'
+        <* lit '-'
+        <* lit 'z')
+    <|>
+        (pure upCase
+        <* lit 'A'
+        <* lit '-'
+        <* lit 'Z')
+    <|>
+        (pure numRange
+        <* lit '0'
+        <* lit '-'
+        <* lit '9')
+    where lowCase  = reOptStr "abcdefghijklmnopqrstuvwxyz"
+          upCase   = reOptStr "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+          numRange = reOptStr "0123456789"
+
+reOptStr :: String -> Regex
+reOptStr = foldr (<|>) empty . map (\c -> return <$> lit c)
+
 -- Accepts atomics in parenthesis for grouping.
 reParen :: Parser Char Regex
 reParen = pure id
@@ -63,10 +95,11 @@ reParen = pure id
     <*> reAlt
     <* lit ')'
 
+
 -- Accepts atomic regex which are literals, escape sequences, dots and atomics
 -- in parenthesis.
 reAtom :: Parser Char Regex
-reAtom = reLit <|> reEsc <|> reDot <|> reParen
+reAtom = reLit <|> reEsc <|> reDot <|> reParen <|> reBracket
 
 -- Accepts literals of regex, which are all chars without special meaning.
 -- Excluding "()+$*.|\\[]"
