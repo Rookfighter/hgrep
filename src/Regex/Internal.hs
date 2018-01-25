@@ -87,5 +87,3 @@ reDot :: Parser Char Regex
 reDot = try g
     where g '.' = Just $ return  <$> satisfy (\_ -> True) -- accept every char
           g _   = Nothing
-
---litStr = foldr (\a b -> (:) <$> a <*> b) (pure []) . map lit
