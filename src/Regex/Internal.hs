@@ -69,17 +69,17 @@ reAtom :: Parser Char Regex
 reAtom = reLit <|> reEsc <|> reDot <|> reParen
 
 -- Accepts literals of regex, which are all chars without special meaning.
--- Excluding "()+$*.|"
+-- Excluding "()+$*.|\\[]"
 reLit :: Parser Char Regex
 reLit = try g
-    where g c | elem c "()+$*.|" = Nothing
+    where g c | elem c specChars = Nothing
               | otherwise        = Just $ (return <$> lit c) -- accept every char
                                                              -- except special ones
 
 -- Accepts escaped chars of regex which have special meaning.
 reEsc :: Parser Char Regex
 reEsc = pure id <* lit '\\' <*> try g
-    where g c | elem c "()+$*.|\\" = Just $ (return <$> lit c) -- accept the escaped char
+    where g c | elem c specChars = Just $ (return <$> lit c) -- accept the escaped char
           g c | otherwise        = Nothing
 
 -- Accepts dot and creates regex that accepts any char.
@@ -87,3 +87,5 @@ reDot :: Parser Char Regex
 reDot = try g
     where g '.' = Just $ return  <$> satisfy (\_ -> True) -- accept every char
           g _   = Nothing
+
+specChars = "[]()+^$*.|\\"
