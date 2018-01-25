@@ -16,7 +16,7 @@ match :: Regex -> String -> Maybe String
 match = parse
 
 reFull :: Parser Char Regex
-reFull = re1
+reFull = reAlt
 
 reMany :: Parser Char Regex -> Parser Char Regex
 reMany p = g <$> p
@@ -37,6 +37,7 @@ reAlt =
             <*> re1)
     where g p ps = foldr (<|>) p ps
 
+-- Accepts sequences of regex. At least 1.
 re1 :: Parser Char Regex
 re1 = g <$> pmany reQuant <*> reQuant
     where g ps p = foldr (\a b -> (++) <$> a <*> b) p ps
@@ -59,7 +60,7 @@ reQuant =
 reParen :: Parser Char Regex
 reParen = pure id
     <* lit '('
-    <*> reAtom
+    <*> reAlt
     <* lit ')'
 
 -- Accepts atomic regex which are literals, escape sequences, dots and atomics
