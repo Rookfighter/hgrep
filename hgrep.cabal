@@ -34,7 +34,9 @@ library
     Lib,
     ParserCon,
     Regex.Internal,
-    Regex
+    Regex,
+    Hgrep,
+    Hgrep.Internal
   other-modules:
     Paths_hgrep
   default-language: Haskell2010

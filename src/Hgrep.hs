@@ -5,5 +5,7 @@
 
 module Hgrep (run) where
 
+import qualified Hgrep.Internal as H
+
 run :: IO ()
-run = undefined
+run = H.run
