@@ -18,13 +18,20 @@ match = parse
 reFull :: Parser Char Regex
 reFull = reAlt
 
+-- Allows the found regex pattern to be applied zero or many times.
 reMany :: Parser Char Regex -> Parser Char Regex
 reMany p = g <$> p
     where g rp = concat <$> pmany rp
 
+-- Allows the found regex pattern to be applied one or many times.
 reSome :: Parser Char Regex -> Parser Char Regex
 reSome p = g <$> p
     where g rp = concat <$> psome rp
+
+-- Allows the found regex pattern to be applied zero or one time.
+reOptional :: Parser Char Regex -> Parser Char Regex
+reOptional p = g <$> p
+    where g r = r <|> pure ""
 
 -- Accepts alternatives of regular expressions.
 -- Corresponds to re0 of exercise sheet.
@@ -53,6 +60,10 @@ reQuant =
     (reSome $
         reAtom
         <* lit '+')
+    <|>
+    (reOptional $
+        reAtom
+        <* lit '?')
     <|>
     reAtom
 
@@ -123,4 +134,5 @@ reDot = try g
     where g '.' = Just $ return  <$> satisfy (\_ -> True) -- accept every char
           g _   = Nothing
 
+-- Defines characters that have a special meaning
 specChars = "?[]()+^$*.|\\"
