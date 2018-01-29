@@ -12,11 +12,32 @@ type Regex = Parser Char String
 compile :: String -> Maybe Regex
 compile = parse reFull
 
-match :: Regex -> String -> Maybe String
-match = parse
+-- Finds and matches all occurences of the given reges in given string.
+matchAll :: Regex -> String -> [(Int, String)]
+matchAll = matchAllR 0
+
+-- Recursive implementation of matchAll to extract start index of found strings.
+matchAllR :: Int -> Regex -> String -> [(Int, String)]
+matchAllR n r s = case match r s of
+    Nothing     -> []
+    Just (n2,s2) -> (n+n2,s2) : matchAllR (n+n2+length s2) r (drop (n2 + length s2) s)
+
+-- Finds and matches first occurence of the given regex in given string.
+match :: Regex -> String -> Maybe (Int, String)
+match  = matchR 0
+
+-- Recursive implementation of match to extract start index of found string.
+matchR :: Int -> Regex -> String -> Maybe (Int, String)
+matchR n r []     = Nothing
+matchR n r (x:xs) = case parse (r <* regexAny) (x:xs) of
+    Just s  -> Just (n, s)
+    Nothing -> matchR (n+1) r xs
 
 reFull :: Parser Char Regex
 reFull = reAlt
+
+regexAny :: Regex
+regexAny = pmany $ satisfy (\_ -> True)
 
 -- Allows the found regex pattern to be applied zero or many times.
 reMany :: Parser Char Regex -> Parser Char Regex
@@ -136,7 +157,7 @@ reEsc = pure id <* lit '\\' <*> try g
 -- Accepts dot and creates regex that accepts any char.
 reDot :: Parser Char Regex
 reDot = try g
-    where g '.' = Just $ return  <$> satisfy (\_ -> True) -- accept every char
+    where g '.' = Just $ return <$> satisfy (\_ -> True) -- accept every char
           g _   = Nothing
 
 -- Defines characters that have a special meaning

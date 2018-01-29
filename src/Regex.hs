@@ -6,7 +6,8 @@
 module Regex (
     Regex,
     compile,
-    match
+    match,
+    matchAll
     ) where
 
 
@@ -19,5 +20,8 @@ compile :: String -> Maybe Regex
 compile = R.compile
 
 -- Match the given string against a Regex parser.
-match :: Regex -> String -> Maybe String
+match :: Regex -> String -> Maybe (Int, String)
 match = R.match
+
+matchAll :: Regex -> String -> [(Int, String)]
+matchAll = R.matchAll
