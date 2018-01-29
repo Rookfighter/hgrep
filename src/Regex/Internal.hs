@@ -9,6 +9,7 @@ import ParserCon
 
 type Regex = Parser Char String
 
+-- Compile the given pattern into a regex.
 compile :: String -> Maybe Regex
 compile = parse reFull
 
