@@ -30,4 +30,13 @@ run = runSearch =<< execParser opts
                   <> progDesc "Search for PATTERN in each FILE or standard input.")
 
 runSearch :: Opts -> IO ()
-runSearch o = putStrLn("Done!")
+runSearch o = case compile (pattern o) of
+                Nothing -> fail "Inval pattern"
+                Just r  -> map searchFile (files o)
+    where
+    searchFile f = do {
+        input <- readFile f;
+        map searchLine (lines input)
+        }
+    searchLine l = map printMatch $ match r l
+    printMatch l m = 

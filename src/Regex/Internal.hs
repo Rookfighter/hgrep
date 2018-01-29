@@ -115,6 +115,11 @@ reRange =
          <* lit '-'
          <* lit 'Z')
     <|>
+        (pure regexAlpha
+         <* lit 'a'
+         <* lit '-'
+         <* lit 'Z')
+    <|>
         (pure regexNum
          <* lit '0'
          <* lit '-'
