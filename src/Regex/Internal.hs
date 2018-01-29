@@ -33,6 +33,9 @@ reOptional :: Parser Char Regex -> Parser Char Regex
 reOptional p = g <$> p
     where g r = r <|> pure ""
 
+reInvert :: Parser Char Regex -> Parser Char Regex
+reInvert = undefined
+
 -- Accepts alternatives of regular expressions.
 -- Corresponds to re0 of exercise sheet.
 reAlt :: Parser Char Regex
@@ -71,10 +74,12 @@ reQuant =
 reBracket :: Parser Char Regex
 reBracket = pure id
     <* lit '['
-    <*> (g <$> cont <*> pmany cont)
+    <*> bracketTerm
     <* lit ']'
-    where g p ps = foldr (<|>) p ps
-          cont = reRange <|> reAtom
+    where g p ps = foldr (<|>) p ps -- fold given parsers into options
+          rangeAtom = reRange <|> reAtom -- either recognize atoms or ranges
+          bracketTerm = g <$> rangeAtom <*> pmany rangeAtom -- recognize terms in brackets
+          invBracket = pure id <* lit '^' <*> (reInvert $ bracketTerm) -- invert terms in brackets
 
 -- Accepts predefined ranges, such as numbers and lowercase / uppercase alphabet.
 reRange :: Parser Char Regex
