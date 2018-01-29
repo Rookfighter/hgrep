@@ -105,28 +105,43 @@ reBracket = pure id
 -- Accepts predefined ranges, such as numbers and lowercase / uppercase alphabet.
 reRange :: Parser Char Regex
 reRange =
-        (pure lowCase
+        (pure regexAlphaLow
          <* lit 'a'
          <* lit '-'
          <* lit 'z')
     <|>
-        (pure upCase
+        (pure regexAlphaUp
          <* lit 'A'
          <* lit '-'
          <* lit 'Z')
     <|>
-        (pure numRange
+        (pure regexNum
          <* lit '0'
          <* lit '-'
          <* lit '9')
-    where lowCase  = reOptStr "abcdefghijklmnopqrstuvwxyz"
-          upCase   = reOptStr "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-          numRange = reOptStr "0123456789"
 
 -- Helper function to convert a given string into a alternative parser of the
 -- individual chars.
-reOptStr :: String -> Regex
-reOptStr = foldr (<|>) empty . map (\c -> return <$> lit c)
+regexOptStr :: String -> Regex
+regexOptStr = foldr (<|>) empty . map (\c -> return <$> lit c)
+
+regexAlphaLow :: Regex
+regexAlphaLow = regexOptStr "abcdefghijklmnopqrstuvwxyz"
+
+regexAlphaUp :: Regex
+regexAlphaUp = regexOptStr "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+regexAlpha :: Regex
+regexAlpha = regexAlphaLow <|> regexAlphaUp
+
+regexNum :: Regex
+regexNum = regexOptStr "0123456789"
+
+regexAlphaNum :: Regex
+regexAlphaNum = regexAlpha <|> regexNum
+
+regexWhiteSpace :: Regex
+regexWhiteSpace = regexOptStr " \t\v\n\r\b"
 
 -- Accepts atomics in parenthesis for grouping.
 reParen :: Parser Char Regex
@@ -152,7 +167,10 @@ reLit = try g
 reEsc :: Parser Char Regex
 reEsc = pure id <* lit '\\' <*> try g
     where g c | elem c specChars = Just $ (return <$> lit c) -- accept the escaped char
-          g c | otherwise        = Nothing
+          g 'd' = Just $ regexNum
+          g 'l' = Just $ regexAlpha
+          g 'w' = Just $ regexWhiteSpace
+          g c   = Nothing
 
 -- Accepts dot and creates regex that accepts any char.
 reDot :: Parser Char Regex
