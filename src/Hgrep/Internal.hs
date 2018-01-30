@@ -129,9 +129,11 @@ printMatchesCol l ms = printStr . foldr colorMatch (0,"") $ ms
     colorMatch (n,m) (con,s) = ((length l) - n, outStr n m s con) -- update consumed chars and result str
     printStr (con, s) = putStrLn ((take (length l - con) l) ++ s)
 
-
 substr :: Int -> Int -> String -> String
 substr b l = take l . drop b
 
+bashRed = "\x1b[1;31m"
+bashNc = "\x1b[0m"
+
 colorStr :: String -> String
-colorStr s = "*" ++ s ++ "*"
+colorStr s = bashRed ++ s ++ bashNc
