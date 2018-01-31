@@ -50,6 +50,11 @@ reSome :: Parser Char Regex -> Parser Char Regex
 reSome p = g <$> p
     where g rp = concat <$> psome rp
 
+-- Allows the found regex pattern to be applied one or more times optionally.
+reSomeOpt :: Parser Char Regex -> Parser Char Regex
+reSomeOpt p = g <$> p <*> pmany p
+    where g p ps = foldr (<|>) p ps
+
 -- Allows the found regex pattern to be applied zero or one time.
 reOptional :: Parser Char Regex -> Parser Char Regex
 reOptional p = g <$> p
@@ -99,9 +104,16 @@ reBracket = pure id
     <*> bracketTerm
     <* lit ']'
     where g p ps = foldr (<|>) p ps -- fold given parsers into options
-          rangeAtom = reRange <|> reAtom -- either recognize atoms or ranges
-          bracketTerm = g <$> rangeAtom <*> pmany rangeAtom -- recognize terms in brackets
-          invBracket = pure id <* lit '^' <*> (reInvert $ bracketTerm) -- invert terms in brackets
+          term = reSomeOpt $ reRange <|> reBracketLit -- reLit <|> reDot <|> reEsc -- either recognize atoms or ranges
+          termInv = pure id <* lit '^' <*> reSomeOpt reBracketLitInv  -- invert terms in brackets
+          bracketTerm = term <|> termInv -- recognize terms in brackets
+
+reBracketLit = try g
+    where g c | elem c "^[]" = Nothing
+              | otherwise    = Just $ (return <$> lit c) -- accept every char
+reBracketLitInv = try g
+    where g c | elem c "^[]" = Nothing
+              | otherwise    = Just $ (return <$> satisfy (c/=)) -- accept char which is not same
 
 -- Accepts predefined ranges, such as numbers and lowercase / uppercase alphabet.
 reRange :: Parser Char Regex
