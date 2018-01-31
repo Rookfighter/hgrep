@@ -98,19 +98,20 @@ reQuant =
 reBracket :: Parser Char Regex
 reBracket = pure id
     <* lit '['
-    <*> bracketTerm
+    <*> (reBracketTerm <|> reBracketTermInv)
     <* lit ']'
-    where g p ps = foldr (<|>) p ps -- fold given parsers into options
-          term = reSomeOpt $ reRange <|> reBracketLit -- reLit <|> reDot <|> reEsc -- either recognize atoms or ranges
-          termInv = pure id <* lit '^' <*> reSomeOpt reBracketLitInv  -- invert terms in brackets
-          bracketTerm = term <|> termInv -- recognize terms in brackets
 
-reBracketLit = try g
+reBracketTerm :: Parser Char Regex
+reBracketTerm = reSomeOpt $ reRange <|> try g
     where g c | elem c "^[]" = Nothing
               | otherwise    = Just $ (return <$> lit c) -- accept every char
-reBracketLitInv = try g
-    where g c | elem c "^[]" = Nothing
-              | otherwise    = Just $ (return <$> satisfy (c/=)) -- accept char which is not same
+
+reBracketTermInv :: Parser Char Regex
+reBracketTermInv = pure id <* lit '^' <*> pure g <*> (psome . satisfy $ (\c -> not . elem c $ "^[]"))
+    where g s = try (h s)
+          h s c | elem c s = Nothing
+          h s c            = Just $ return c
+
 
 -- Accepts predefined ranges, such as numbers and lowercase / uppercase alphabet.
 reRange :: Parser Char Regex
