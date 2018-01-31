@@ -52,16 +52,13 @@ reSome p = g <$> p
 
 -- Allows the found regex pattern to be applied one or more times optionally.
 reSomeOpt :: Parser Char Regex -> Parser Char Regex
-reSomeOpt p = g <$> p <*> pmany p
-    where g p ps = foldr (<|>) p ps
+reSomeOpt p = g <$> psome p
+    where g ps = foldr (<|>) (pure "") ps
 
 -- Allows the found regex pattern to be applied zero or one time.
 reOptional :: Parser Char Regex -> Parser Char Regex
 reOptional p = g <$> p
     where g r = r <|> pure ""
-
-reInvert :: Parser Char Regex -> Parser Char Regex
-reInvert = undefined
 
 -- Accepts alternatives of regular expressions.
 -- Corresponds to re0 of exercise sheet.
@@ -76,8 +73,8 @@ reAlt =
 
 -- Accepts sequences of regex. At least 1.
 re1 :: Parser Char Regex
-re1 = g <$> pmany reQuant <*> reQuant
-    where g ps p = foldr (\a b -> (++) <$> a <*> b) p ps
+re1 = g <$> psome reQuant
+    where g ps = foldr (\a b -> (++) <$> a <*> b) (pure "") ps
 
 -- Accepts quantifictations of the regex.
 -- Corresponds to re2 of exercise sheet.
