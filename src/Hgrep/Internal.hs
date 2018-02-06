@@ -13,8 +13,8 @@ version = "0.1.0"
 
 data Opts = Opts {
         nocolor :: Bool,
-        fixedstr :: Bool,
-        igncase :: Bool,
+        fixedstr :: Bool, -- TODO
+        igncase :: Bool,  -- TODO
         invmatch :: Bool,
         onlymatch :: Bool,
         quiet :: Bool,
@@ -118,8 +118,10 @@ matchLn o r l = case matchAll r l of
 
 -- Print a given match to stdout. Distinguish between normal and nocolor mode.
 printMatches :: Opts -> String -> [(Int, String)] -> IO ()
-printMatches o l _ | nocolor o = putStrLn l
-printMatches _ l ms            = printMatchesCol l ms
+printMatches o l ms | quiet o     = return ()
+                    | nocolor o   = putStrLn l
+                    | onlymatch o = mapM_ (\(_,s) -> putStrLn s) ms
+                    | otherwise   = printMatchesCol l ms
 
 printMatchesCol :: String -> [(Int, String)] -> IO ()
 printMatchesCol l ms = printStr . foldr colorMatch (0,"") $ ms
