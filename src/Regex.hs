@@ -23,5 +23,6 @@ compile = R.compile
 match :: Regex -> String -> Maybe (Int, String)
 match = R.match
 
+-- Find all matches in the given string.
 matchAll :: Regex -> String -> [(Int, String)]
 matchAll = R.matchAll
