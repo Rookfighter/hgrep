@@ -77,7 +77,25 @@ reQuant =
         reAtom
         <* lit '?')
     <|>
+    reGenRep
+    <|>
     reAtom
+
+reGenRep :: Parser Char Regex
+reGenRep = g
+    <$> reAtom
+    <*  lit '{'
+    <*> pToNum
+    <*  lit ','
+    <*> pToNum
+    <*  lit '}'
+    where g rp n1 n2 | n2 <= 0   = pure ""
+                     | n1 <= 0   = (++) <$> (rp <|> pure "") <*> g rp 0 (n2-1)
+                     | otherwise = (++) <$> rp <*> g rp (n1-1) (n2-1)
+
+pToNum :: Parser Char Int
+pToNum = read
+    <$> (psome $ satisfy (\c -> elem c "0123456789"))
 
 -- Allows the found regex pattern to be applied zero or many times.
 reMany :: Parser Char Regex -> Parser Char Regex
@@ -213,4 +231,4 @@ regexOptStr :: String -> Regex
 regexOptStr = foldr (<|>) empty . map (\c -> return <$> lit c)
 
 -- Defines characters that have a special meaning
-specChars = "?[]()+^$*.|\\"
+specChars = "{}?[]()+^$*.|\\"
