@@ -9,6 +9,8 @@ import Regex.Internal
 import Test.HUnit
 
 tests = [
+    TestLabel "Test compilerQuant" testCompilerQuant,
+    TestLabel "Test compilerGenRep" testCompilerGenRep,
     TestLabel "Test compilerAtom" testCompilerAtom,
     TestLabel "Test compilerLit" testCompilerLit,
     TestLabel "Test compilerEsc" testCompilerEsc,
@@ -21,6 +23,47 @@ tests = [
     TestLabel "Test regexWhiteSpace" testRegexWhiteSpace,
     TestLabel "Test regexOptStr" testRegexOptStr
     ]
+
+testCompilerQuant :: Test
+testCompilerQuant = TestCase (do
+    assertCompile "" comp "a*"
+    assertCompile "" comp "a?"
+    assertCompile "" comp "a+"
+    assertNoCompile "" comp "*"
+    assertNoCompile "" comp "?"
+    assertNoCompile "" comp "+"
+
+    assertMatch "a*" (reg "a*") "a"
+    assertMatch "a*" (reg "a*") "aaa"
+    assertMatch "a*" (reg "a*") ""
+
+    assertMatch "a?" (reg "a?") "a"
+    assertMatch "a?" (reg "a?") ""
+    assertNoMatch "a?" (reg "a?") "aa"
+
+    assertMatch "a+" (reg "a+") "a"
+    assertMatch "a+" (reg "a+") "aaa"
+    assertNoMatch "a+" (reg "a+") ""
+    )
+    where comp = reQuant
+          reg s = compileTrusted comp s
+
+testCompilerGenRep :: Test
+testCompilerGenRep = TestCase (do
+    assertCompile "" comp "a{2,4}"
+    assertCompile "" comp "a{2,0}"
+
+    assertMatch "a{2,4}" (reg "a{2,4}") "aa"
+    assertMatch "a{2,4}" (reg "a{2,4}") "aaa"
+    assertMatch "a{2,4}" (reg "a{2,4}") "aaaa"
+    assertNoMatch "a{2,4}" (reg "a{2,4}") "a"
+    assertNoMatch "a{2,4}" (reg "a{2,4}") "aaaaa"
+
+    assertNoMatch "a{2,0}" (reg "a{2,0}") "a"
+    assertMatch "a{2,0}" (reg "a{2,0}") ""
+    )
+    where comp = reGenRep
+          reg s = compileTrusted comp s
 
 testCompilerAtom :: Test
 testCompilerAtom = TestCase (do
