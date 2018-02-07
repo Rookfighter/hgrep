@@ -9,17 +9,73 @@ import Regex.Internal
 import Test.HUnit
 
 tests = [
-    TestLabel "Test compileParen" testCompileParen,
-    TestLabel "Test compileBracket" testCompileBracket,
-    TestLabel "Test compileRange" testCompileRange,
+    TestLabel "Test compilerAtom" testCompilerAtom,
+    TestLabel "Test compilerLit" testCompilerLit,
+    TestLabel "Test compilerEsc" testCompilerEsc,
+    TestLabel "Test compilerDot" testCompilerDot,
+    TestLabel "Test compilerParen" testCompilerParen,
+    TestLabel "Test compilerBracket" testCompilerBracket,
+    TestLabel "Test compilerRange" testCompilerRange,
     TestLabel "Test regexAlpha" testRegexAlpha,
     TestLabel "Test regexNum" testRegexNum,
     TestLabel "Test regexWhiteSpace" testRegexWhiteSpace,
     TestLabel "Test regexOptStr" testRegexOptStr
     ]
 
-testCompileParen :: Test
-testCompileParen = TestCase (do
+testCompilerAtom :: Test
+testCompilerAtom = TestCase (do
+    assertCompile "lit" comp "a"
+    assertCompile "esc" comp "\\d"
+    assertCompile "dot" comp "."
+    assertCompile "paren" comp "(ab)"
+    assertCompile "bracket" comp "[ab]"
+    assertCompile "bracket" comp "[^ab]"
+    )
+    where comp  = reAtom
+          reg s = compileTrusted comp s
+
+testCompilerLit :: Test
+testCompilerLit = TestCase (do
+    mapM_ (\c -> assertNoCompile "" comp [c]) specChars
+
+    assertMatch "" (reg "a") "a"
+    assertNoMatch "" (reg "a") "b"
+    )
+    where comp  = reLit
+          reg s = compileTrusted comp s
+
+testCompilerEsc :: Test
+testCompilerEsc = TestCase (do
+    assertCompile "digit" comp "\\d"
+    mapM_ (\c -> assertMatch "digit" (reg "\\d") [c]) "0123456789"
+    assertNoMatch "digit" (reg "\\d") "10"
+
+    assertCompile "letter" comp "\\l"
+    mapM_ (\c -> assertMatch "letter" (reg "\\l") [c]) "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    assertNoMatch "digit" (reg "\\d") "ab"
+
+    assertCompile "whitespace" comp "\\w"
+    mapM_ (\c -> assertMatch "whitespace" (reg "\\w") [c]) " \t\v\n\r\b"
+    assertNoMatch "digit" (reg "\\d") "  "
+
+    mapM_ (\c -> assertCompile "special" comp ('\\':[c])) specChars
+    mapM_ (\(c,esc) -> assertMatch "special" (reg esc) [c]) . map (\c -> (c,'\\':[c])) $ specChars
+    )
+    where comp  = reEsc
+          reg s = compileTrusted comp s
+
+testCompilerDot :: Test
+testCompilerDot = TestCase (do
+    assertCompile "" comp "."
+    assertNoCompile "" comp "as"
+
+    mapM_ (\c -> assertMatch "" (reg ".") [c]) "!§$%&/()=?#+*abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    )
+    where comp  = reDot
+          reg s = compileTrusted comp s
+
+testCompilerParen :: Test
+testCompilerParen = TestCase (do
     assertCompile "" comp "(ab)"
     assertMatch "(ab)" (reg "(ab)") "ab"
     assertNoMatch "(ab)" (reg "(ab)") "b"
@@ -33,8 +89,8 @@ testCompileParen = TestCase (do
     where comp  = reParen
           reg s = compileTrusted comp s
 
-testCompileBracket :: Test
-testCompileBracket = TestCase (do
+testCompilerBracket :: Test
+testCompilerBracket = TestCase (do
     assertCompile "" comp "[abc]"
     assertMatch "[abc]" (reg "[abc]") "a"
     assertMatch "[abc]" (reg "[abc]") "b"
@@ -54,8 +110,8 @@ testCompileBracket = TestCase (do
     where comp  = reBracket
           reg s = compileTrusted comp s
 
-testCompileRange :: Test
-testCompileRange = TestCase (do
+testCompilerRange :: Test
+testCompilerRange = TestCase (do
     assertCompile "compile a-z" comp "a-z"
     mapM_ (\c -> assertMatch "match a-z" (reg "a-z") [c]) "abcdefghijklmnopqrstuvwxyz"
     mapM_ (\c -> assertNoMatch "no match a-z" (reg "a-z") [c]) "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
