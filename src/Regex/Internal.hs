@@ -8,12 +8,14 @@ module Regex.Internal where
 import ParserCon
 
 type Regex = Parser Char String
+type Compiler = Parser Char Regex
 
 -- Finds and matches all occurences of the given reges in given string.
 matchAll :: Regex -> String -> [(Int, String)]
 matchAll = matchAllR 0
 
 -- Recursive implementation of matchAll to extract start index of found strings.
+-- TODO use bind or fmap
 matchAllR :: Int -> Regex -> String -> [(Int, String)]
 matchAllR n r s = case match r s of
     Nothing     -> []
@@ -24,6 +26,7 @@ match :: Regex -> String -> Maybe (Int, String)
 match  = matchR 0
 
 -- Recursive implementation of match to extract start index of found string.
+-- TODO use bind or fmap
 matchR :: Int -> Regex -> String -> Maybe (Int, String)
 matchR n r []     = Nothing
 matchR n r (x:xs) =
@@ -32,6 +35,9 @@ matchR n r (x:xs) =
         Just s  -> Just (n, s)
         Nothing -> matchR (n+1) r xs
 
+matchExact :: Regex -> String -> Maybe String
+matchExact = parse
+
 -- Regex that matches any token zero more times.
 -- Used to consume remaining tokens after a match.
 regexAny :: Regex
@@ -39,15 +45,22 @@ regexAny = pmany $ satisfy (\_ -> True)
 
 -- Compile the given pattern into a regex.
 compile :: String -> Maybe Regex
-compile = parse reFull
+compile = compileCompiler reFull
+
+compileCompiler :: Compiler -> String -> Maybe Regex
+compileCompiler = parse
+
+compileTrusted :: Compiler -> String -> Regex
+compileTrusted comp pattern = regex
+    where (Just regex) = compileCompiler comp pattern
 
 -- Full regex parser.
-reFull :: Parser Char Regex
+reFull :: Compiler
 reFull = reAlt
 
 -- Accepts alternatives of regular expressions.
 -- Corresponds to re0 of exercise sheet.
-reAlt :: Parser Char Regex
+reAlt :: Compiler
 reAlt =
     g
     <$> re1
@@ -57,13 +70,13 @@ reAlt =
     where g p ps = foldr (<|>) p ps
 
 -- Accepts sequences of regex. At least 1.
-re1 :: Parser Char Regex
+re1 :: Compiler
 re1 = g <$> psome reQuant
     where g ps = foldr (\a b -> (++) <$> a <*> b) (pure "") ps
 
 -- Accepts quantifictations of the regex.
 -- Corresponds to re2 of exercise sheet.
-reQuant :: Parser Char Regex
+reQuant :: Compiler
 reQuant =
     (reMany $
         reAtom
@@ -81,7 +94,7 @@ reQuant =
     <|>
     reAtom
 
-reGenRep :: Parser Char Regex
+reGenRep :: Compiler
 reGenRep = g
     <$> reAtom
     <*  lit '{'
@@ -98,35 +111,35 @@ pToNum = read
     <$> (psome $ satisfy (\c -> elem c "0123456789"))
 
 -- Allows the found regex pattern to be applied zero or many times.
-reMany :: Parser Char Regex -> Parser Char Regex
+reMany :: Compiler -> Compiler
 reMany p = g <$> p
     where g rp = concat <$> pmany rp
 
 -- Allows the found regex pattern to be applied one or many times.
-reSome :: Parser Char Regex -> Parser Char Regex
+reSome :: Compiler -> Compiler
 reSome p = g <$> p
     where g rp = concat <$> psome rp
 
 -- Allows the found regex pattern to be applied zero or one time.
-reOptional :: Parser Char Regex -> Parser Char Regex
+reOptional :: Compiler -> Compiler
 reOptional p = g <$> p
     where g r = r <|> pure ""
 
 -- Accepts atomic regex which are literals, escape sequences, dots and atomics
 -- in parenthesis.
-reAtom :: Parser Char Regex
+reAtom :: Compiler
 reAtom = reLit <|> reEsc <|> reDot <|> reParen <|> reBracket
 
 -- Accepts literals of regex, which are all chars without special meaning.
 -- Excluding "()+$*.|\\[]"
-reLit :: Parser Char Regex
+reLit :: Compiler
 reLit = try g
     where g c | elem c specChars = Nothing
               | otherwise        = Just $ (return <$> lit c) -- accept every char
                                                              -- except special ones
 
 -- Accepts escaped chars of regex which have special meaning.
-reEsc :: Parser Char Regex
+reEsc :: Compiler
 reEsc = pure id <* lit '\\' <*> try g
     where g c | elem c specChars = Just $ (return <$> lit c) -- accept the escaped char
           g 'd' = Just $ regexNum
@@ -135,13 +148,13 @@ reEsc = pure id <* lit '\\' <*> try g
           g c   = Nothing
 
 -- Accepts dot and creates regex that accepts any char.
-reDot :: Parser Char Regex
+reDot :: Compiler
 reDot = try g
     where g '.' = Just $ return <$> satisfy (\_ -> True) -- accept every char
           g _   = Nothing
 
 -- Accepts atomics in parenthesis for grouping.
-reParen :: Parser Char Regex
+reParen :: Compiler
 reParen = pure id
     <*  lit '('
     <*> reAlt
@@ -149,7 +162,7 @@ reParen = pure id
 
 -- Accepts alternative literals in brackets and their inverse.
 -- E.g. "[abc]" and "[^abc]"
-reBracket :: Parser Char Regex
+reBracket :: Compiler
 reBracket = pure id
     <*  lit '['
     <*> (reBracketTerm <|> reBracketTermInv)
@@ -157,19 +170,19 @@ reBracket = pure id
 
 -- Accepts non inverted terms in brackets, which are all kind of literals.
 -- No escapes and no special meanings for chars are allowed in brackets.
-reBracketTerm :: Parser Char Regex
+reBracketTerm :: Compiler
 reBracketTerm = reSomeOpt $ reRange <|> try g
     where g c | elem c "^[]" = Nothing
               | otherwise    = Just $ (return <$> lit c) -- accept every char
 
 -- Allows the found regex pattern to be applied one or more times optionally.
-reSomeOpt :: Parser Char Regex -> Parser Char Regex
+reSomeOpt :: Compiler -> Compiler
 reSomeOpt p = g <$> psome p
     where g ps = foldr (<|>) (pure "") ps
 
 -- Accepts inverted terms in brackets. See also reBracketTerm.
 -- Inverted terms always start with '^'.
-reBracketTermInv :: Parser Char Regex
+reBracketTermInv :: Compiler
 reBracketTermInv = pure id
     <*  lit '^'
     <*> pure g
@@ -179,7 +192,7 @@ reBracketTermInv = pure id
           h s c            = Just $ return c
 
 -- Accepts predefined ranges, such as numbers and lowercase / uppercase alphabet.
-reRange :: Parser Char Regex
+reRange :: Compiler
 reRange =
       (pure regexAlphaLow
        <* lit 'a'
