@@ -45,7 +45,7 @@ testCompilerQuant = TestCase (do
     assertMatch "a+" (reg "a+") "aaa"
     assertNoMatch "a+" (reg "a+") ""
     )
-    where comp = reQuant
+    where comp = compilerQuant
           reg s = compileTrusted comp s
 
 testCompilerGenRep :: Test
@@ -62,7 +62,7 @@ testCompilerGenRep = TestCase (do
     assertNoMatch "a{2,0}" (reg "a{2,0}") "a"
     assertMatch "a{2,0}" (reg "a{2,0}") ""
     )
-    where comp = reGenRep
+    where comp = compilerGenRep
           reg s = compileTrusted comp s
 
 testCompilerAtom :: Test
@@ -74,7 +74,7 @@ testCompilerAtom = TestCase (do
     assertCompile "bracket" comp "[ab]"
     assertCompile "bracket" comp "[^ab]"
     )
-    where comp  = reAtom
+    where comp  = compilerAtom
           reg s = compileTrusted comp s
 
 testCompilerLit :: Test
@@ -84,7 +84,7 @@ testCompilerLit = TestCase (do
     assertMatch "" (reg "a") "a"
     assertNoMatch "" (reg "a") "b"
     )
-    where comp  = reLit
+    where comp  = compilerLit
           reg s = compileTrusted comp s
 
 testCompilerEsc :: Test
@@ -104,7 +104,7 @@ testCompilerEsc = TestCase (do
     mapM_ (\c -> assertCompile "special" comp ('\\':[c])) specChars
     mapM_ (\(c,esc) -> assertMatch "special" (reg esc) [c]) . map (\c -> (c,'\\':[c])) $ specChars
     )
-    where comp  = reEsc
+    where comp  = compilerEsc
           reg s = compileTrusted comp s
 
 testCompilerDot :: Test
@@ -114,7 +114,7 @@ testCompilerDot = TestCase (do
 
     mapM_ (\c -> assertMatch "" (reg ".") [c]) "!§$%&/()=?#+*abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     )
-    where comp  = reDot
+    where comp  = compilerDot
           reg s = compileTrusted comp s
 
 testCompilerParen :: Test
@@ -129,7 +129,7 @@ testCompilerParen = TestCase (do
     assertNoCompile "" comp "(ab"
     assertNoCompile "" comp "ab)"
     )
-    where comp  = reParen
+    where comp  = compilerParen
           reg s = compileTrusted comp s
 
 testCompilerBracket :: Test
@@ -150,7 +150,7 @@ testCompilerBracket = TestCase (do
     assertNoCompile "" comp "[abc"
     assertNoCompile "" comp "abc]"
     )
-    where comp  = reBracket
+    where comp  = compilerBracket
           reg s = compileTrusted comp s
 
 testCompilerRange :: Test
@@ -170,7 +170,7 @@ testCompilerRange = TestCase (do
     assertCompile "compile 0-9" comp "0-9"
     mapM_ (\c -> assertMatch "match 0-9" (reg "0-9") [c]) "0123456789"
     mapM_ (\c -> assertNoMatch "no match 0-9" (reg "0-9") [c]) "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-    where comp  = reRange
+    where comp  = compilerRange
           reg s = compileTrusted comp s
 
 testRegexAlpha :: Test

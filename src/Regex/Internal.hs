@@ -45,7 +45,7 @@ regexAny = pmany $ satisfy (\_ -> True)
 
 -- Compile the given pattern into a regex.
 compile :: String -> Maybe Regex
-compile = compileCompiler reFull
+compile = compileCompiler compilerFull
 
 compileCompiler :: Compiler -> String -> Maybe Regex
 compileCompiler = parse
@@ -55,92 +55,93 @@ compileTrusted comp pattern = regex
     where (Just regex) = compileCompiler comp pattern
 
 -- Full regex parser.
-reFull :: Compiler
-reFull = reAlt
+compilerFull :: Compiler
+compilerFull = compilerAlt
 
 -- Accepts alternatives of regular expressions.
 -- Corresponds to re0 of exercise sheet.
-reAlt :: Compiler
-reAlt =
+compilerAlt :: Compiler
+compilerAlt =
     g
-    <$> re1
+    <$> compilerSeq
     <*> pmany (pure id
             <*  lit '|'
-            <*> re1)
+            <*> compilerSeq)
     where g p ps = foldr (<|>) p ps
 
 -- Accepts sequences of regex. At least 1.
-re1 :: Compiler
-re1 = g <$> psome reQuant
+compilerSeq :: Compiler
+compilerSeq = g <$> psome compilerQuant
     where g ps = foldr (\a b -> (++) <$> a <*> b) (pure "") ps
 
 -- Accepts quantifictations of the regex.
 -- Corresponds to re2 of exercise sheet.
-reQuant :: Compiler
-reQuant =
-    (reMany $
-        reAtom
+compilerQuant :: Compiler
+compilerQuant =
+    (compilerMany $
+        compilerAtom
         <* lit '*')
     <|>
-    (reSome $
-        reAtom
+    (compilerSome $
+        compilerAtom
         <* lit '+')
     <|>
-    (reOptional $
-        reAtom
+    (compilerOptional $
+        compilerAtom
         <* lit '?')
     <|>
-    reGenRep
+    compilerGenRep
     <|>
-    reAtom
+    compilerAtom
 
-reGenRep :: Compiler
-reGenRep = g
-    <$> reAtom
+-- Accepts generic repetition regex, e.g. x{1,3}.
+compilerGenRep :: Compiler
+compilerGenRep = g
+    <$> compilerAtom
     <*  lit '{'
-    <*> pToNum
+    <*> parserStr2Int
     <*  lit ','
-    <*> pToNum
+    <*> parserStr2Int
     <*  lit '}'
     where g rp n1 n2 | n2 <= 0   = pure ""
                      | n1 <= 0   = (++) <$> (rp <|> pure "") <*> g rp 0 (n2-1)
                      | otherwise = (++) <$> rp <*> g rp (n1-1) (n2-1)
 
-pToNum :: Parser Char Int
-pToNum = read
+parserStr2Int :: Parser Char Int
+parserStr2Int = read
     <$> (psome $ satisfy (\c -> elem c "0123456789"))
 
 -- Allows the found regex pattern to be applied zero or many times.
-reMany :: Compiler -> Compiler
-reMany p = g <$> p
+compilerMany :: Compiler -> Compiler
+compilerMany p = g <$> p
     where g rp = concat <$> pmany rp
 
 -- Allows the found regex pattern to be applied one or many times.
-reSome :: Compiler -> Compiler
-reSome p = g <$> p
+compilerSome :: Compiler -> Compiler
+compilerSome p = g <$> p
     where g rp = concat <$> psome rp
 
 -- Allows the found regex pattern to be applied zero or one time.
-reOptional :: Compiler -> Compiler
-reOptional p = g <$> p
+compilerOptional :: Compiler -> Compiler
+compilerOptional p = g <$> p
     where g r = r <|> pure ""
 
 -- Accepts atomic regex which are literals, escape sequences, dots and atomics
 -- in parenthesis.
-reAtom :: Compiler
-reAtom = reLit <|> reEsc <|> reDot <|> reParen <|> reBracket
+compilerAtom :: Compiler
+compilerAtom = compilerLit <|> compilerEsc <|> compilerDot <|> compilerParen <|> compilerBracket
 
 -- Accepts literals of regex, which are all chars without special meaning.
 -- Excluding "()+$*.|\\[]"
-reLit :: Compiler
-reLit = try g
+compilerLit :: Compiler
+compilerLit = try g
     where g c | elem c specChars = Nothing
               | otherwise        = Just $ (return <$> lit c) -- accept every char
                                                              -- except special ones
 
 -- Accepts escaped chars of regex which have special meaning.
-reEsc :: Compiler
-reEsc = pure id <* lit '\\' <*> try g
+compilerEsc :: Compiler
+compilerEsc = pure id <* lit '\\' <*> try g
     where g c | elem c specChars = Just $ (return <$> lit c) -- accept the escaped char
           g 'd' = Just $ regexNum
           g 'l' = Just $ regexAlpha
@@ -148,42 +149,42 @@ reEsc = pure id <* lit '\\' <*> try g
           g c   = Nothing
 
 -- Accepts dot and creates regex that accepts any char.
-reDot :: Compiler
-reDot = try g
+compilerDot :: Compiler
+compilerDot = try g
     where g '.' = Just $ return <$> satisfy (\_ -> True) -- accept every char
           g _   = Nothing
 
 -- Accepts atomics in parenthesis for grouping.
-reParen :: Compiler
-reParen = pure id
+compilerParen :: Compiler
+compilerParen = pure id
     <*  lit '('
-    <*> reAlt
+    <*> compilerAlt
     <*  lit ')'
 
 -- Accepts alternative literals in brackets and their inverse.
 -- E.g. "[abc]" and "[^abc]"
-reBracket :: Compiler
-reBracket = pure id
+compilerBracket :: Compiler
+compilerBracket = pure id
     <*  lit '['
-    <*> (reBracketTerm <|> reBracketTermInv)
+    <*> (compilerBracketTerm <|> compilerBracketTermInv)
     <*  lit ']'
 
 -- Accepts non inverted terms in brackets, which are all kind of literals.
 -- No escapes and no special meanings for chars are allowed in brackets.
-reBracketTerm :: Compiler
-reBracketTerm = reSomeOpt $ reRange <|> try g
+compilerBracketTerm :: Compiler
+compilerBracketTerm = compilerSomeOptional $ compilerRange <|> try g
     where g c | elem c "^[]" = Nothing
               | otherwise    = Just $ (return <$> lit c) -- accept every char
 
 -- Allows the found regex pattern to be applied one or more times optionally.
-reSomeOpt :: Compiler -> Compiler
-reSomeOpt p = g <$> psome p
+compilerSomeOptional :: Compiler -> Compiler
+compilerSomeOptional p = g <$> psome p
     where g ps = foldr (<|>) (pure "") ps
 
--- Accepts inverted terms in brackets. See also reBracketTerm.
+-- Accepts inverted terms in brackets. See also compilerBracketTerm.
 -- Inverted terms always start with '^'.
-reBracketTermInv :: Compiler
-reBracketTermInv = pure id
+compilerBracketTermInv :: Compiler
+compilerBracketTermInv = pure id
     <*  lit '^'
     <*> pure g
     <*> (psome . satisfy $ (\c -> not . elem c $ "^[]"))
@@ -192,8 +193,8 @@ reBracketTermInv = pure id
           h s c            = Just $ return c
 
 -- Accepts predefined ranges, such as numbers and lowercase / uppercase alphabet.
-reRange :: Compiler
-reRange =
+compilerRange :: Compiler
+compilerRange =
       (pure regexAlphaLow
        <* lit 'a'
        <* lit '-'
