@@ -7,7 +7,9 @@ module Regex.Internal where
 
 import ParserCon
 
+-- A Regex parses a given string to match it against its underlying pattern.
 type Regex = Parser Char String
+-- A Compiler parses a given regex pattern and creates a representing parser.
 type Compiler = Parser Char Regex
 
 -- Finds and matches all occurences of the given reges in given string.
@@ -15,7 +17,6 @@ matchAll :: Regex -> String -> [(Int, String)]
 matchAll = matchAllR 0
 
 -- Recursive implementation of matchAll to extract start index of found strings.
--- TODO use bind or fmap
 matchAllR :: Int -> Regex -> String -> [(Int, String)]
 matchAllR n r s = case match r s of
     Nothing     -> []
@@ -26,7 +27,6 @@ match :: Regex -> String -> Maybe (Int, String)
 match  = matchR 0
 
 -- Recursive implementation of match to extract start index of found string.
--- TODO use bind or fmap
 matchR :: Int -> Regex -> String -> Maybe (Int, String)
 matchR n r []     = Nothing
 matchR n r (x:xs) =
