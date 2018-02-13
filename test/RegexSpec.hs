@@ -169,6 +169,7 @@ testCompilerBracket = TestCase (do
     assertNoCompile "" comp "[a[b]"
     assertNoCompile "" comp "[abc"
     assertNoCompile "" comp "abc]"
+    assertNoCompile "" comp "[]"
     )
     where comp  = compilerBracket
           reg s = compileTrusted comp s
