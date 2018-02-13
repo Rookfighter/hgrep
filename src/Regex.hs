@@ -5,6 +5,9 @@
 
 module Regex (
     Regex,
+    Preprocessor,
+    preprocess,
+    ignCase,
     compile,
     match,
     matchAll
@@ -14,6 +17,13 @@ module Regex (
 import qualified Regex.Internal as R
 
 type Regex = R.Regex
+type Preprocessor = R.Preprocessor
+
+ignCase :: Preprocessor
+ignCase = R.preprocIgnCase
+
+preprocess :: Preprocessor -> String -> String
+preprocess = R.preprocess
 
 -- Compile the given string into a Regex parser.
 compile :: String -> Maybe Regex

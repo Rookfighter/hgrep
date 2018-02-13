@@ -6,11 +6,40 @@
 module Regex.Internal where
 
 import ParserCon
+import Data.Char
 
+type Preprocessor = Parser Char String
 -- A Regex parses a given string to match it against its underlying pattern.
 type Regex = Parser Char String
 -- A Compiler parses a given regex pattern and creates a representing parser.
 type Compiler = Parser Char Regex
+
+preprocess :: Preprocessor -> String -> String
+preprocess p s = result
+    where Just result = parse p s
+
+preprocIgnCase :: Preprocessor
+preprocIgnCase =
+        bracketStr
+        <$> litStr '['
+        <*> (concat <$> pmany (preprocUpperLower <|> litId))
+        <*> litStr ']'
+    <|>
+        concat
+        <$> pmany (preprocCaseAlt <|> litId)
+    where litStr c = return <$> lit c
+          litId  = return <$> satisfy (\_ -> True)
+          bracketStr s1 s2 s3 = s1 ++ s2 ++ s3
+
+preprocCaseAlt :: Preprocessor
+preprocCaseAlt = wrapBracket <$> preprocUpperLower
+    where wrapBracket s = "[" ++ s ++ "]"
+
+preprocUpperLower :: Preprocessor
+preprocUpperLower = try upperLower
+    where upperLower c | elem c (alphaLow ++ alphaUp) = Just $ (toLower c):[toUpper c]
+                       | otherwise                    = Nothing
+
 
 -- Finds and matches all occurences of the given reges in given string.
 matchAll :: Regex -> String -> [(Int, String)]
@@ -109,7 +138,7 @@ compilerGenRep = g
 
 parserStr2Int :: Parser Char Int
 parserStr2Int = read
-    <$> (psome $ satisfy (\c -> elem c "0123456789"))
+    <$> (psome $ satisfy (\c -> elem c digits))
 
 -- Allows the found regex pattern to be applied zero or many times.
 compilerMany :: Compiler -> Compiler
@@ -217,11 +246,11 @@ compilerRange =
 
 -- Regex which accepts any lower case letter.
 regexAlphaLow :: Regex
-regexAlphaLow = regexOptStr "abcdefghijklmnopqrstuvwxyz"
+regexAlphaLow = regexOptStr alphaLow
 
 -- Regex which accepts any uppercase case letter
 regexAlphaUp :: Regex
-regexAlphaUp = regexOptStr "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+regexAlphaUp = regexOptStr alphaUp
 
 -- Regex which accepts any lower or upper case letter
 regexAlpha :: Regex
@@ -229,7 +258,7 @@ regexAlpha = regexAlphaLow <|> regexAlphaUp
 
 -- Regex which accepts any digit.
 regexNum :: Regex
-regexNum = regexOptStr "0123456789"
+regexNum = regexOptStr digits
 
 -- Regex which accepts any letter and digit.
 regexAlphaNum :: Regex
@@ -246,3 +275,6 @@ regexOptStr = foldr (<|>) empty . map (\c -> return <$> lit c)
 
 -- Defines characters that have a special meaning
 specChars = "{}?[]()+^$*.|\\"
+alphaLow = "abcdefghijklmnopqrstuvwxyz"
+alphaUp = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+digits = "0123456789"

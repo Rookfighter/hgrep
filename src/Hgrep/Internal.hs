@@ -84,13 +84,17 @@ printVersion = putStrLn ("hgrep " ++ version ++ "\nCopyright Fabian Meyer 2018")
 
 -- Compute fixed string search.
 searchFixed :: Opts -> IO ()
-searchFixed = undefined
+searchFixed _ = putStrLn "Sorry, not implemented yet!\n:')"
 
 -- Compute regex search. Compiles the given regex patter.
 searchRegex :: Opts -> IO ()
-searchRegex o = case compile (pattern o) of
-    Nothing -> fail ("Invalid pattern " ++ pattern o)
-    Just r  -> mapM_ (matchFile o r) (files o)
+searchRegex o | igncase o = compileAndMatch o $ preprocess ignCase (pattern o)
+              | otherwise = compileAndMatch o $ pattern o
+
+compileAndMatch :: Opts -> String -> IO ()
+compileAndMatch o pat = case compile pat of
+        Nothing -> putStrLn $ "Error. Invalid pattern " ++ pattern o
+        Just r  -> mapM_ (matchFile o r) (files o)
 
 -- Check for matches in the given file.
 matchFile :: Opts -> Regex -> String -> IO ()
