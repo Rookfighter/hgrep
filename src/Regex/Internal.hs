@@ -208,7 +208,7 @@ compilerBracketTerm = compilerSomeOptional $ compilerRange <|> try g
 -- Allows the found regex pattern to be applied one or more times optionally.
 compilerSomeOptional :: Compiler -> Compiler
 compilerSomeOptional p = g <$> psome p
-    where g ps = foldr (<|>) (pure "") ps
+    where g (p:ps) = foldr (<|>) p ps
 
 -- Accepts inverted terms in brackets. See also compilerBracketTerm.
 -- Inverted terms always start with '^'.

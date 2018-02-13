@@ -9,6 +9,7 @@ import Regex.Internal
 import Test.HUnit
 
 tests = [
+    TestLabel "Test compilerFull" testCompilerFull,
     TestLabel "Test compilerQuant" testCompilerQuant,
     TestLabel "Test compilerGenRep" testCompilerGenRep,
     TestLabel "Test compilerAtom" testCompilerAtom,
@@ -23,6 +24,25 @@ tests = [
     TestLabel "Test regexWhiteSpace" testRegexWhiteSpace,
     TestLabel "Test regexOptStr" testRegexOptStr
     ]
+
+testCompilerFull :: Test
+testCompilerFull = TestCase (do
+    assertCompile "" comp "a[abc]"
+    assertNoMatch "a[abc]" (reg "a[bcd]") "a"
+    assertMatch "a[abc]" (reg "a[bcd]") "ab"
+    assertMatch "a[abc]" (reg "a[bcd]") "ac"
+    assertMatch "a[abc]" (reg "a[bcd]") "ad"
+    assertNoMatch "a[abc]" (reg "a[bcd]") "ae"
+
+    assertCompile "" comp "[abc]"
+    assertMatch "[abc]" (reg "[abc]") "a"
+    assertMatch "[abc]" (reg "[abc]") "b"
+    assertMatch "[abc]" (reg "[abc]") "c"
+    assertNoMatch "[abc]" (reg "[abc]") "d"
+    assertNoMatch "[abc]" (reg "[abc]") "aa"
+    )
+    where comp  = compilerFull
+          reg s = compileTrusted comp s
 
 testCompilerQuant :: Test
 testCompilerQuant = TestCase (do
