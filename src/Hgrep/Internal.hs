@@ -84,7 +84,7 @@ printVersion = putStrLn ("hgrep " ++ version ++ "\nCopyright Fabian Meyer 2018")
 
 -- Compute fixed string search.
 searchFixed :: Opts -> IO ()
-searchFixed _ = putStrLn "Sorry, not implemented yet!\n:')"
+searchFixed _ = putStrLn "Sorry, fixed string search is not implemented yet! :')"
 
 -- Compute regex search. Compiles the given regex patter.
 searchRegex :: Opts -> IO ()
