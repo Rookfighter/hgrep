@@ -231,18 +231,6 @@ testRegexOptStr = TestCase (do
 -- Assertions
 -------------------------------------
 
--- assertCompileMatch :: String -> String -> Assertion
--- assertCompileMatch pattern str = do
---     assertCompile pattern
---     assertMatch regex str
---     where (Just regex) = compile pattern
---
--- assertCompileNoMatch :: String -> String -> Assertion
--- assertCompileNoMatch pattern  str = do
---     assertCompile pattern
---     assertNoMatch regex str
---     where (Just regex) = compile pattern
-
 assertCompile :: String -> Compiler -> String -> Assertion
 assertCompile pre comp pattern =
     (compile2bool comp pattern)
