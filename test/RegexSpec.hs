@@ -72,12 +72,17 @@ testCompilerGenRep :: Test
 testCompilerGenRep = TestCase (do
     assertCompile "" comp "a{2,4}"
     assertCompile "" comp "a{2,0}"
+    assertCompile "" comp "a{2,}"
 
     assertMatch "a{2,4}" (reg "a{2,4}") "aa"
     assertMatch "a{2,4}" (reg "a{2,4}") "aaa"
     assertMatch "a{2,4}" (reg "a{2,4}") "aaaa"
     assertNoMatch "a{2,4}" (reg "a{2,4}") "a"
     assertNoMatch "a{2,4}" (reg "a{2,4}") "aaaaa"
+
+    assertMatch "a{2,}" (reg "a{2,}") "aa"
+    assertMatch "a{2,}" (reg "a{2,}") "aaaaaaaaaa"
+    assertNoMatch "a{2,}" (reg "a{2,}") "a"
 
     assertNoMatch "a{2,0}" (reg "a{2,0}") "a"
     assertMatch "a{2,0}" (reg "a{2,0}") ""

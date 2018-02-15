@@ -125,16 +125,26 @@ compilerQuant =
 
 -- Accepts generic repetition regex, e.g. x{1,3}.
 compilerGenRep :: Compiler
-compilerGenRep = g
+compilerGenRep = regexGenRep
     <$> compilerAtom
     <*  lit '{'
     <*> parserStr2Int
     <*  lit ','
-    <*> parserStr2Int
+    <*> parserOptInt
     <*  lit '}'
-    where g rp n1 n2 | n2 <= 0   = pure ""
-                     | n1 <= 0   = (++) <$> (rp <|> pure "") <*> g rp 0 (n2-1)
-                     | otherwise = (++) <$> rp <*> g rp (n1-1) (n2-1)
+
+regexGenRep :: Regex -> Int -> (Maybe Int) -> Regex
+regexGenRep reg n1 Nothing   | n1 <= 0   = regexMany reg
+                             | otherwise = (++) <$> reg <*> regexGenRep reg (n1-1) Nothing
+regexGenRep reg n1 (Just n2) | n2 <= 0   = pure ""
+                             | n1 <= 0   = (++) <$> (reg <|> pure "") <*> regexGenRep reg 0 (Just $ n2-1)
+                             | otherwise = (++) <$> reg <*> regexGenRep reg (n1-1) (Just $ n2-1)
+
+parserOptInt :: Parser Char (Maybe Int)
+parserOptInt =
+    (Just <$> parserStr2Int)
+    <|>
+    ((\_ -> Nothing) <$> pure "")
 
 parserStr2Int :: Parser Char Int
 parserStr2Int = read
@@ -142,13 +152,17 @@ parserStr2Int = read
 
 -- Allows the found regex pattern to be applied zero or many times.
 compilerMany :: Compiler -> Compiler
-compilerMany p = g <$> p
-    where g rp = concat <$> pmany rp
+compilerMany comp = regexMany <$> comp
+
+regexMany :: Regex -> Regex
+regexMany reg = concat <$> pmany reg
 
 -- Allows the found regex pattern to be applied one or many times.
 compilerSome :: Compiler -> Compiler
-compilerSome p = g <$> p
-    where g rp = concat <$> psome rp
+compilerSome comp = regexSome <$> comp
+
+regexSome :: Regex -> Regex
+regexSome reg = concat <$> psome reg
 
 -- Allows the found regex pattern to be applied zero or one time.
 compilerOptional :: Compiler -> Compiler
