@@ -22,6 +22,14 @@ instance Show Regex where
 -- A Compiler parses a given regex pattern and creates a representing parser.
 type Compiler = Parser Char RegexRaw
 
+test :: (String, [String]) -> IO ()
+test (pat, strs)= case compile pat of
+    Just reg -> mapM_ (testg reg) strs
+    Nothing -> putStrLn "Compile Error."
+testg reg s = case match reg s of
+        Just p  -> putStrLn ("Found match for " ++ s ++ " at " ++ show p);
+        Nothing -> putStrLn ("No match for " ++ s)
+
 preprocess :: Preprocessor -> String -> String
 preprocess p s = result
     where Just result = parse p s
@@ -65,12 +73,13 @@ match (Regex reg _) = matchR 0 reg
 
 -- Recursive implementation of match to extract start index of found string.
 matchR :: Int -> RegexRaw -> String -> Maybe (Int, String)
-matchR n reg []     = Nothing
-matchR n reg (x:xs) =
+matchR n reg xs =
     -- append many regexAny to consume every token after match
-    case parse (reg <* regexMany regexAny) (x:xs) of
+    case parse (reg <* regexMany regexAny) xs of
         Just s  -> Just (n, s)
-        Nothing -> matchR (n+1) reg xs
+        Nothing -> matchNext n reg xs
+    where matchNext n reg []     = Nothing
+          matchNext n reg (x:xs) = matchR (n+1) reg xs
 
 matchExact :: Regex -> String -> Maybe String
 matchExact (Regex reg _) = parse reg
@@ -108,19 +117,19 @@ compilerSeq = regexFoldSeq <$> psome compilerQuant
 regexFoldSeq :: [RegexRaw] -> RegexRaw
 regexFoldSeq regs = foldr regexSeq (pure "") regs
 
--- Accepts quantifictations of the regex.
+-- Accepts quantifications of the regex.
 -- Corresponds to re2 of exercise sheet.
 compilerQuant :: Compiler
 compilerQuant =
-    (compilerMany $
+    (regexMany <$>
         compilerAtom
         <* lit '*')
     <|>
-    (compilerSome $
+    (regexSome <$>
         compilerAtom
         <* lit '+')
     <|>
-    (compilerOptional $
+    (regexOpt <$>
         compilerAtom
         <* lit '?')
     <|>
@@ -158,24 +167,17 @@ parserStr2Int :: Parser Char Int
 parserStr2Int = read
     <$> (psome $ satisfy (\c -> elem c digits))
 
--- Allows the found regex pattern to be applied zero or many times.
-compilerMany :: Compiler -> Compiler
-compilerMany comp = regexMany <$> comp
-
 regexMany :: RegexRaw -> RegexRaw
-regexMany reg = concat <$> pmany reg
-
--- Allows the found regex pattern to be applied one or many times.
-compilerSome :: Compiler -> Compiler
-compilerSome comp = regexSome <$> comp
+regexMany reg = (regexSome reg) <|> pure ""
 
 regexSome :: RegexRaw -> RegexRaw
-regexSome reg = concat <$> psome reg
+regexSome reg = reg >>= g
+    where g "" = return <$> satisfy (\_ -> False)
+          g s  = (s++) <$> regexMany reg
 
 -- Allows the found regex pattern to be applied zero or one time.
-compilerOptional :: Compiler -> Compiler
-compilerOptional p = g <$> p
-    where g r = r <|> pure ""
+regexOpt :: RegexRaw -> RegexRaw
+regexOpt reg = reg <|> pure ""
 
 -- Accepts atomic regex which are literals, escape sequences, dots and atomics
 -- in parenthesis.
@@ -221,8 +223,11 @@ compilerParen = pure id
 compilerBracket :: Compiler
 compilerBracket = pure id
     <*  lit '['
-    <*> (compilerBracketTerm <|> compilerBracketTermInv)
+    <*> compilerBracketInner
     <*  lit ']'
+
+compilerBracketInner :: Compiler
+compilerBracketInner = compilerBracketTerm <|> compilerBracketTermInv
 
 -- Accepts non inverted terms in brackets, which are all kind of literals.
 -- No escapes and no special meanings for chars are allowed in brackets.

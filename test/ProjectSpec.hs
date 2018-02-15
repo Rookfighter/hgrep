@@ -3,7 +3,7 @@
 --     Author: Fabian Meyer
 -- Created on: 15 Feb 2018
 
-module RegexTest where
+module ProjectSpec where
 
 import RegexTestLib
 import Regex.Internal
@@ -11,7 +11,7 @@ import ParserCon
 
 runTests = withFeatures myBasics myFeatures
 
-myFeatures :: Features
+myFeatures :: Features Regex
 myFeatures = [
     myParsing,
     mySet,
@@ -21,24 +21,27 @@ myFeatures = [
     myMatch
     ]
 
-myParsing :: Feature
+myParsing :: Feature Regex
 myParsing = Parsing show compile
 
-mySet :: Feature
+mySet :: Feature Regex
 mySet = Set compSet
-    where compSet s = compileTrusted compilerBracket s
+    where compSet s = compileTrusted compilerBracketInner s
 
-myAny :: Feature
-myAny = Any regexAny
+myAny :: Feature Regex
+myAny = Any (Regex regexAny ".")
 
-myRep :: Feature
+myRep :: Feature Regex
 myRep = Rep genRep
-    where genRep n1 mn2 reg = regexGenRep reg n1 mn2
+    where genRep n1 mn2 (Regex reg s) = Regex (regexGenRep reg n1 mn2) (s ++ "{" ++ show n1 ++ "," ++ (m2s mn2) ++ "}")
+          m2s (Just n) = show n
+          m2s Nothing  = ""
 
-myMany :: Feature
-myMany = Many regexSome
+myMany :: Feature Regex
+myMany = Many g
+    where g (Regex reg s) = Regex (regexSome reg) s
 
-myMatch :: Feature
+myMatch :: Feature Regex
 myMatch = Match match2bool
 
 match2bool :: Regex -> String -> Bool
@@ -48,17 +51,17 @@ maybe2bool :: Maybe a -> Bool
 maybe2bool (Just _) = True
 maybe2bool Nothing  = False
 
-myBasics :: Basics
+myBasics :: Basics Regex
 myBasics = Basics myAtom mySeq myAlt myStar
 
 myAtom :: Char -> Regex
-myAtom c = compileTrusted compilerAtom [c]
+myAtom c = Regex (return <$> lit c) [c]
 
 mySeq :: Regex -> Regex -> Regex
-mySeq re1 re2 = (++) <$> re1 <*> re2
+mySeq (Regex re1 s1) (Regex re2 s2) = Regex (regexSeq re1 re2) (s1 ++ s2)
 
 myAlt :: Regex -> Regex -> Regex
-myAlt re1 re2 = re1 <|> re2
+myAlt (Regex re1 s1) (Regex re2 s2) = Regex (re1 <|> re2) ("(" ++ s1 ++ ")|(" ++ s2 ++ ")")
 
 myStar :: Regex -> Regex
-myStar re = concat <$> pmany re
+myStar (Regex re s) = Regex (regexMany re) ("(" ++ s ++ ")*")
