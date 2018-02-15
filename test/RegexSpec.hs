@@ -271,7 +271,7 @@ assertNoMatch pre regex str =
     (pre ++ ": Expected to find no match for \"" ++ str ++ "\"")
 
 match2bool :: Regex -> String -> Bool
-match2bool regex str = maybe2bool $ matchExact regex str
+match2bool reg = maybe2bool . matchExact reg
 
 maybe2bool :: Maybe a -> Bool
 maybe2bool (Just _) = True
