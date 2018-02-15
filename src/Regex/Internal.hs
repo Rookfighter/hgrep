@@ -59,18 +59,13 @@ match  = matchR 0
 matchR :: Int -> Regex -> String -> Maybe (Int, String)
 matchR n r []     = Nothing
 matchR n r (x:xs) =
-    -- append regexAny to consume every token after match
-    case parse (r <* regexAny) (x:xs) of
+    -- append many regexAny to consume every token after match
+    case parse (r <* regexMany regexAny) (x:xs) of
         Just s  -> Just (n, s)
         Nothing -> matchR (n+1) r xs
 
 matchExact :: Regex -> String -> Maybe String
 matchExact = parse
-
--- Regex that matches any token zero more times.
--- Used to consume remaining tokens after a match.
-regexAny :: Regex
-regexAny = pmany $ satisfy (\_ -> True)
 
 -- Compile the given pattern into a regex.
 compile :: String -> Maybe Regex
@@ -91,17 +86,19 @@ compilerFull = compilerAlt
 -- Corresponds to re0 of exercise sheet.
 compilerAlt :: Compiler
 compilerAlt =
-    g
+    foldOpt
     <$> compilerSeq
     <*> pmany (pure id
             <*  lit '|'
             <*> compilerSeq)
-    where g p ps = foldr (<|>) p ps
+    where foldOpt p ps = regexFoldOpt (p:ps)
 
 -- Accepts sequences of regex. At least 1.
 compilerSeq :: Compiler
-compilerSeq = g <$> psome compilerQuant
-    where g ps = foldr (\a b -> (++) <$> a <*> b) (pure "") ps
+compilerSeq = regexFoldSeq <$> psome compilerQuant
+
+regexFoldSeq :: [Regex] -> Regex
+regexFoldSeq regs = foldr regexSeq (pure "") regs
 
 -- Accepts quantifictations of the regex.
 -- Corresponds to re2 of exercise sheet.
@@ -135,10 +132,13 @@ compilerGenRep = regexGenRep
 
 regexGenRep :: Regex -> Int -> (Maybe Int) -> Regex
 regexGenRep reg n1 Nothing   | n1 <= 0   = regexMany reg
-                             | otherwise = (++) <$> reg <*> regexGenRep reg (n1-1) Nothing
+                             | otherwise = regexSeq reg (regexGenRep reg (n1-1) Nothing)
 regexGenRep reg n1 (Just n2) | n2 <= 0   = pure ""
-                             | n1 <= 0   = (++) <$> (reg <|> pure "") <*> regexGenRep reg 0 (Just $ n2-1)
-                             | otherwise = (++) <$> reg <*> regexGenRep reg (n1-1) (Just $ n2-1)
+                             | n1 <= 0   = regexSeq (reg <|> pure "") (regexGenRep reg 0 (Just $ n2-1))
+                             | otherwise = regexSeq reg (regexGenRep reg (n1-1) (Just $ n2-1))
+
+regexSeq :: Regex -> Regex -> Regex
+regexSeq reg1 reg2 = (++) <$> reg1 <*> reg2
 
 parserOptInt :: Parser Char (Maybe Int)
 parserOptInt =
@@ -194,8 +194,12 @@ compilerEsc = pure id <* lit '\\' <*> try g
 -- Accepts dot and creates regex that accepts any char.
 compilerDot :: Compiler
 compilerDot = try g
-    where g '.' = Just $ return <$> satisfy (\_ -> True) -- accept every char
+    where g '.' = Just regexAny
           g _   = Nothing
+
+-- Regex that matches any token.
+regexAny :: Regex
+regexAny = return <$> satisfy (\_ -> True)
 
 -- Accepts atomics in parenthesis for grouping.
 compilerParen :: Compiler
@@ -215,14 +219,16 @@ compilerBracket = pure id
 -- Accepts non inverted terms in brackets, which are all kind of literals.
 -- No escapes and no special meanings for chars are allowed in brackets.
 compilerBracketTerm :: Compiler
-compilerBracketTerm = compilerSomeOptional $ compilerRange <|> try g
+compilerBracketTerm = compilerSomeOpt $ compilerRange <|> try g
     where g c | elem c "^[]" = Nothing
               | otherwise    = Just $ (return <$> lit c) -- accept every char
 
 -- Allows the found regex pattern to be applied one or more times optionally.
-compilerSomeOptional :: Compiler -> Compiler
-compilerSomeOptional p = g <$> psome p
-    where g (p:ps) = foldr (<|>) p ps
+compilerSomeOpt :: Compiler -> Compiler
+compilerSomeOpt comp = regexFoldOpt <$> psome comp
+
+regexFoldOpt :: [Regex] -> Regex
+regexFoldOpt (r:rs) = foldr (<|>) r rs
 
 -- Accepts inverted terms in brackets. See also compilerBracketTerm.
 -- Inverted terms always start with '^'.
