@@ -10,9 +10,17 @@ import Data.Char
 
 type Preprocessor = Parser Char String
 -- A Regex parses a given string to match it against its underlying pattern.
-type Regex = Parser Char String
+type RegexRaw = Parser Char String
+data Regex = Regex RegexRaw String
+
+instance Eq Regex where
+    (==) (Regex _ s1) (Regex _ s2) = s1 == s2
+
+instance Show Regex where
+    show (Regex _ s) = s
+
 -- A Compiler parses a given regex pattern and creates a representing parser.
-type Compiler = Parser Char Regex
+type Compiler = Parser Char RegexRaw
 
 preprocess :: Preprocessor -> String -> String
 preprocess p s = result
@@ -47,36 +55,36 @@ matchAll = matchAllR 0
 
 -- Recursive implementation of matchAll to extract start index of found strings.
 matchAllR :: Int -> Regex -> String -> [(Int, String)]
-matchAllR n r s = case match r s of
+matchAllR n reg s = case match reg s of
     Nothing     -> []
-    Just (n2,s2) -> (n+n2,s2) : matchAllR (n+n2+length s2) r (drop (n2 + length s2) s)
+    Just (n2,s2) -> (n+n2,s2) : matchAllR (n+n2+length s2) reg (drop (n2 + length s2) s)
 
 -- Finds and matches first occurence of the given regex in given string.
 match :: Regex -> String -> Maybe (Int, String)
-match  = matchR 0
+match (Regex reg _) = matchR 0 reg
 
 -- Recursive implementation of match to extract start index of found string.
-matchR :: Int -> Regex -> String -> Maybe (Int, String)
-matchR n r []     = Nothing
-matchR n r (x:xs) =
+matchR :: Int -> RegexRaw -> String -> Maybe (Int, String)
+matchR n reg []     = Nothing
+matchR n reg (x:xs) =
     -- append many regexAny to consume every token after match
-    case parse (r <* regexMany regexAny) (x:xs) of
+    case parse (reg <* regexMany regexAny) (x:xs) of
         Just s  -> Just (n, s)
-        Nothing -> matchR (n+1) r xs
+        Nothing -> matchR (n+1) reg xs
 
 matchExact :: Regex -> String -> Maybe String
-matchExact = parse
+matchExact (Regex reg _) = parse reg
 
 -- Compile the given pattern into a regex.
 compile :: String -> Maybe Regex
 compile = compileCompiler compilerFull
 
 compileCompiler :: Compiler -> String -> Maybe Regex
-compileCompiler = parse
+compileCompiler comp pat = fmap (\reg -> Regex reg pat) (parse comp pat)
 
 compileTrusted :: Compiler -> String -> Regex
-compileTrusted comp pattern = regex
-    where (Just regex) = compileCompiler comp pattern
+compileTrusted comp pat = reg
+    where (Just reg) = compileCompiler comp pat
 
 -- Full regex parser.
 compilerFull :: Compiler
@@ -97,7 +105,7 @@ compilerAlt =
 compilerSeq :: Compiler
 compilerSeq = regexFoldSeq <$> psome compilerQuant
 
-regexFoldSeq :: [Regex] -> Regex
+regexFoldSeq :: [RegexRaw] -> RegexRaw
 regexFoldSeq regs = foldr regexSeq (pure "") regs
 
 -- Accepts quantifictations of the regex.
@@ -130,14 +138,14 @@ compilerGenRep = regexGenRep
     <*> parserOptInt
     <*  lit '}'
 
-regexGenRep :: Regex -> Int -> (Maybe Int) -> Regex
+regexGenRep :: RegexRaw -> Int -> (Maybe Int) -> RegexRaw
 regexGenRep reg n1 Nothing   | n1 <= 0   = regexMany reg
                              | otherwise = regexSeq reg (regexGenRep reg (n1-1) Nothing)
 regexGenRep reg n1 (Just n2) | n2 <= 0   = pure ""
                              | n1 <= 0   = regexSeq (reg <|> pure "") (regexGenRep reg 0 (Just $ n2-1))
                              | otherwise = regexSeq reg (regexGenRep reg (n1-1) (Just $ n2-1))
 
-regexSeq :: Regex -> Regex -> Regex
+regexSeq :: RegexRaw -> RegexRaw -> RegexRaw
 regexSeq reg1 reg2 = (++) <$> reg1 <*> reg2
 
 parserOptInt :: Parser Char (Maybe Int)
@@ -154,14 +162,14 @@ parserStr2Int = read
 compilerMany :: Compiler -> Compiler
 compilerMany comp = regexMany <$> comp
 
-regexMany :: Regex -> Regex
+regexMany :: RegexRaw -> RegexRaw
 regexMany reg = concat <$> pmany reg
 
 -- Allows the found regex pattern to be applied one or many times.
 compilerSome :: Compiler -> Compiler
 compilerSome comp = regexSome <$> comp
 
-regexSome :: Regex -> Regex
+regexSome :: RegexRaw -> RegexRaw
 regexSome reg = concat <$> psome reg
 
 -- Allows the found regex pattern to be applied zero or one time.
@@ -198,7 +206,7 @@ compilerDot = try g
           g _   = Nothing
 
 -- Regex that matches any token.
-regexAny :: Regex
+regexAny :: RegexRaw
 regexAny = return <$> satisfy (\_ -> True)
 
 -- Accepts atomics in parenthesis for grouping.
@@ -227,7 +235,7 @@ compilerBracketTerm = compilerSomeOpt $ compilerRange <|> try g
 compilerSomeOpt :: Compiler -> Compiler
 compilerSomeOpt comp = regexFoldOpt <$> psome comp
 
-regexFoldOpt :: [Regex] -> Regex
+regexFoldOpt :: [RegexRaw] -> RegexRaw
 regexFoldOpt (r:rs) = foldr (<|>) r rs
 
 -- Accepts inverted terms in brackets. See also compilerBracketTerm.
@@ -265,32 +273,32 @@ compilerRange =
        <* lit '9')
 
 -- Regex which accepts any lower case letter.
-regexAlphaLow :: Regex
+regexAlphaLow :: RegexRaw
 regexAlphaLow = regexOptStr alphaLow
 
 -- Regex which accepts any uppercase case letter
-regexAlphaUp :: Regex
+regexAlphaUp :: RegexRaw
 regexAlphaUp = regexOptStr alphaUp
 
 -- Regex which accepts any lower or upper case letter
-regexAlpha :: Regex
+regexAlpha :: RegexRaw
 regexAlpha = regexAlphaLow <|> regexAlphaUp
 
 -- Regex which accepts any digit.
-regexNum :: Regex
+regexNum :: RegexRaw
 regexNum = regexOptStr digits
 
 -- Regex which accepts any letter and digit.
-regexAlphaNum :: Regex
+regexAlphaNum :: RegexRaw
 regexAlphaNum = regexAlpha <|> regexNum
 
 -- Regex which accepts any white space.
-regexWhiteSpace :: Regex
+regexWhiteSpace :: RegexRaw
 regexWhiteSpace = regexOptStr " \t\v\n\r\b"
 
 -- Helper function to convert a given string into a regex that accepts
 -- any char of the string.
-regexOptStr :: String -> Regex
+regexOptStr :: String -> RegexRaw
 regexOptStr = foldr (<|>) empty . map (\c -> return <$> lit c)
 
 -- Defines characters that have a special meaning

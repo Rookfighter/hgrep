@@ -203,19 +203,19 @@ testRegexAlpha :: Test
 testRegexAlpha = TestCase (do
     mapM_ (\c -> assertMatch "match alpha" reg [c]) "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     mapM_ (\c -> assertNoMatch "no match alpha" reg [c]) "0123456789!$%&/(=?_:;,.+#')")
-    where reg = regexAlpha
+    where reg = Regex regexAlpha "alpha"
 
 testRegexNum :: Test
 testRegexNum = TestCase (do
     mapM_ (\c -> assertMatch "match num" reg [c]) "0123456789"
     mapM_ (\c -> assertNoMatch "no match num" reg [c]) "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!$%&/(=?_:;,.+#')")
-    where reg = regexNum
+    where reg = Regex regexNum "num"
 
 testRegexWhiteSpace :: Test
 testRegexWhiteSpace = TestCase (do
     mapM_ (\c -> assertMatch "match whitespace" reg [c]) " \t\v\n\r\b"
     mapM_ (\c -> assertNoMatch "no match whitespace" reg [c]) "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!$%&/(=?_:;,.+#')")
-    where reg = regexWhiteSpace
+    where reg = Regex regexWhiteSpace "whitespace"
 
 testRegexOptStr :: Test
 testRegexOptStr = TestCase (do
@@ -225,7 +225,7 @@ testRegexOptStr = TestCase (do
     assertNoMatch "" reg "ab"
     assertNoMatch "" reg "abc"
     assertNoMatch "" reg "abc")
-    where reg = regexOptStr "abc"
+    where reg = Regex (regexOptStr "abc") "a|b|c"
 
 -------------------------------------
 -- Assertions

@@ -22,8 +22,7 @@ myFeatures = [
     ]
 
 myParsing :: Feature
-myParsing = Parsing myPrint compile
-    where myPrint _ = "Not implemented"
+myParsing = Parsing show compile
 
 mySet :: Feature
 mySet = Set compSet
