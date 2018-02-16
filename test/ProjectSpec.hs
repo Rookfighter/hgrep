@@ -9,7 +9,7 @@ import RegexTestLib
 import Regex.Internal
 import ParserCon
 
-runTests = withFeatures myBasics myFeatures
+runTests = withFeatures myBasics [myParsing, myMatch, mySet, myMany] --myFeatures
 
 myFeatures :: Features Regex
 myFeatures = [
@@ -39,7 +39,7 @@ myRep = Rep genRep
 
 myMany :: Feature Regex
 myMany = Many g
-    where g (Regex reg s) = Regex (regexSome reg) s
+    where g (Regex reg s) = Regex (regexSome reg) ("(" ++ s ++ ")" ++ "+")
 
 myMatch :: Feature Regex
 myMatch = Match match2bool

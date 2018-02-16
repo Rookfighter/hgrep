@@ -168,12 +168,14 @@ parserStr2Int = read
     <$> (psome $ satisfy (\c -> elem c digits))
 
 regexMany :: RegexRaw -> RegexRaw
-regexMany reg = (regexSome reg) <|> pure ""
+regexMany reg = (reg >>= g) <|> pure ""
+    where g "" = return <$> satisfy (\_ -> False)
+          g s  = (s++) <$> regexMany reg
 
 regexSome :: RegexRaw -> RegexRaw
 regexSome reg = reg >>= g
-    where g "" = return <$> satisfy (\_ -> False)
-          g s  = (s++) <$> regexMany reg
+    where g "" = pure ""
+          g s  = (s++) <$> regexSome reg
 
 -- Allows the found regex pattern to be applied zero or one time.
 regexOpt :: RegexRaw -> RegexRaw
