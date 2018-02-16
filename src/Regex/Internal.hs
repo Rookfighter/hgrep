@@ -63,9 +63,13 @@ matchAll = matchAllR 0
 
 -- Recursive implementation of matchAll to extract start index of found strings.
 matchAllR :: Int -> Regex -> String -> [(Int, String)]
-matchAllR n reg s = case match reg s of
-    Nothing     -> []
-    Just (n2,s2) -> (n+n2,s2) : matchAllR (n+n2+length s2) reg (drop (n2 + length s2) s)
+matchAllR start reg "" = []
+matchAllR start reg str = case match reg str of
+    Nothing        -> []
+    Just (idx,mat) -> let nextStart = start + idx + (max 1 $ length mat)
+                          nextStr   = drop (idx + (max 1 $ length mat)) str
+                      in
+                      (start+idx,mat) : matchAllR nextStart reg nextStr
 
 -- Finds and matches first occurence of the given regex in given string.
 match :: Regex -> String -> Maybe (Int, String)

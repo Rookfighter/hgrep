@@ -46,6 +46,12 @@ testCompilerFull = TestCase (do
 
     assertCompile "" comp "(a*)+"
     assertMatchList "(a*)+" (reg "(a*)+") ["a", "aa", "aaa", "aaaa", "aaaaa", ""]
+
+    assertCompile "" comp "(a{0,})*"
+    assertMatchList "(a{0,})*" (reg "(a{0,})*") ["a", "aa", "aaa", "aaaa", "aaaaa", ""]
+
+    assertCompile "" comp "a*"
+    assertMatchAll (reg "a*") "aaa aa a " ["aaa", "", "aa", "", "a", ""]
     )
     where comp  = compilerFull
           reg s = compileTrusted comp s
@@ -252,6 +258,16 @@ assertNoCompile pre comp pattern =
 compile2bool :: Compiler -> String -> Bool
 compile2bool comp pattern = maybe2bool $ compileCompiler comp pattern
 
+assertMatchAll :: Regex -> String -> [String] -> Assertion
+assertMatchAll reg str expect =
+    let mats = matchAll reg str
+        txt = "Fail match all " ++ show reg ++ " on " ++ str
+    in
+    do
+        assertEqual txt (length mats) (length expect)
+        mapM_ (\((_,s),e) -> assertEqual txt s e) $ zip mats expect
+
+assertMatchList :: String -> Regex -> [String] -> Assertion
 assertMatchList pre reg ls = mapM_ (\s -> assertMatch pre reg s) ls
 
 assertMatch :: String -> Regex -> String -> Assertion

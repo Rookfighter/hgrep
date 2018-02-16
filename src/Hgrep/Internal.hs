@@ -130,10 +130,10 @@ printMatches o l ms | quiet o     = return ()
 printMatchesCol :: String -> [(Int, String)] -> IO ()
 printMatchesCol l ms = printStr . foldr colorMatch (0,"") $ ms
     where
-    remainStr n mlen llen con = substr (n + mlen) (llen-n-mlen-con) -- calc remainng str after match
-    outStr n m s con = (colorStr m) ++ remainStr n (length m) (length l) con l ++ s -- build full result str
-    colorMatch (n,m) (con,s) = ((length l) - n, outStr n m s con) -- update consumed chars and result str
     printStr (con, s) = putStrLn ((take (length l - con) l) ++ s)
+    colorMatch (n,m) (con,s) = ((length l) - n, outStr n m s con) -- update consumed chars and result str
+    outStr n m s con = (colorStr m) ++ remainStr n (length m) (length l) con l ++ s -- build full result str
+    remainStr n mlen llen con = substr (n + mlen) (llen-n-mlen-con) -- calc remainng str after match
 
 substr :: Int -> Int -> String -> String
 substr b l = take l . drop b
