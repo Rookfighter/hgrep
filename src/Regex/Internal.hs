@@ -175,7 +175,7 @@ regexMany reg = (reg >>= g) <|> pure ""
 regexSome :: RegexRaw -> RegexRaw
 regexSome reg = reg >>= g
     where g "" = pure ""
-          g s  = (s++) <$> regexSome reg
+          g s  = (s++) <$> regexMany reg
 
 -- Allows the found regex pattern to be applied zero or one time.
 regexOpt :: RegexRaw -> RegexRaw
