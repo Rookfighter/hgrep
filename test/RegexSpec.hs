@@ -40,6 +40,12 @@ testCompilerFull = TestCase (do
     assertMatch "[abc]" (reg "[abc]") "c"
     assertNoMatch "[abc]" (reg "[abc]") "d"
     assertNoMatch "[abc]" (reg "[abc]") "aa"
+
+    assertCompile "" comp "(a*)*"
+    assertMatchList "(a*)*" (reg "(a*)*") ["a", "aa", "aaa", "aaaa", "aaaaa", ""]
+
+    assertCompile "" comp "(a*)+"
+    assertMatchList "(a*)+" (reg "(a*)+") ["a", "aa", "aaa", "aaaa", "aaaaa", ""]
     )
     where comp  = compilerFull
           reg s = compileTrusted comp s
@@ -245,6 +251,8 @@ assertNoCompile pre comp pattern =
 
 compile2bool :: Compiler -> String -> Bool
 compile2bool comp pattern = maybe2bool $ compileCompiler comp pattern
+
+assertMatchList pre reg ls = mapM_ (\s -> assertMatch pre reg s) ls
 
 assertMatch :: String -> Regex -> String -> Assertion
 assertMatch pre regex str =
