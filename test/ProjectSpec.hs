@@ -9,7 +9,7 @@ import RegexTestLib
 import Regex.Internal
 import ParserCon
 
-runTests = withFeatures myBasics [myParsing, myMatch, mySet, myMany] --myFeatures
+runTests = withFeatures myBasics [myParsing, myMatch, mySet, myAny]-- myRep, myMany] --myFeatures
 
 myFeatures :: Features Regex
 myFeatures = [
