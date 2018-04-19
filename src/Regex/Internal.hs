@@ -51,6 +51,8 @@ preprocCaseAlt :: Preprocessor
 preprocCaseAlt = wrapBracket <$> preprocUpperLower
     where wrapBracket s = "[" ++ s ++ "]"
 
+-- makes every char case independent. Adds a upper and lower case version
+-- to the bracket pattern.
 preprocUpperLower :: Preprocessor
 preprocUpperLower = try upperLower
     where upperLower c | elem c (alphaLow ++ alphaUp) = Just $ (toLower c):[toUpper c]
